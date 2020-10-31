@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ListWithBaseAdapter</string>
+    <string name="submit">Add New Language</string>
+</resources>
