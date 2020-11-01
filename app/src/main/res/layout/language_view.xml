@@ -93,6 +93,15 @@
         <Button
             android:id="@+id/btnCancel"
             android:text="Cancel"
+            android:backgroundTint="#8A8282"
+            android:layout_marginHorizontal="20dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2" />
+
+        <Button
+            android:id="@+id/btnDelete"
+            android:text="Delete"
             android:backgroundTint="#FF2222"
             android:layout_marginHorizontal="20dp"
             android:layout_width="0dp"

@@ -36,9 +36,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     LanguageAdapter adapter;
 
     EditText txtLangName,txtDescription,txtReleaseDate,txtId;
-    String name,desc,releasedate;Integer id,tmpListID;
+    String name,desc,releasedate;
+    Integer id,tmpPosition = -9;
     AlertDialog alertDialog;
-    Button btnSave,btnCancel;
+    Button btnSave,btnCancel,btnDelete;
     LanguageInfo tmpLanguageInfo;
 
     @Override
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         toDoList = (ListView)findViewById(R.id.toDoList);
         fab = (FloatingActionButton) findViewById(R.id.fab);
 
-        GenerateList();
+        //GenerateList();
 
         /*
         String[] nameList = {"Java","Android","C#","C++","PHP","Python","GO"};
@@ -63,9 +64,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         toDoList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                tmpLanguageInfo = arrayList.get(i);
-                tmpListID = i;
-                //showPopupDialog(tmpLanguageInfo);
+                tmpPosition = i; //Array's Index
+                showPopupDialog(arrayList.get(i));
                 Toast.makeText(MainActivity.this,arrayList.get(i).getName(),Toast.LENGTH_LONG).show();
             }
         });
@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void GenerateList(){
-        for(int i=0;i<15;i++){
+        for(int i=0;i<8;i++){
             LanguageInfo info = new LanguageInfo();
             info.setId(i+1);
             info.setName("Language "+(i+1));
@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void showPopupDialog(){
+    private void showPopupDialog(LanguageInfo info){
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         LayoutInflater inflater = LayoutInflater.from(this);
         View v = inflater.inflate(R.layout.language_view,null);
@@ -100,11 +100,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         txtDescription = (EditText) v.findViewById(R.id.txtDescription);
         txtReleaseDate = (EditText) v.findViewById(R.id.txtReleaseDate);
 
+        if(info != null){
+            txtId.setText(String.valueOf(info.getId()));
+            txtLangName.setText(info.getName());
+            txtDescription.setText(info.getDescription());
+            txtReleaseDate.setText(new SimpleDateFormat("yyyy-MM-dd").format(info.releasedDate));
+        }
+
         btnSave = (Button) v.findViewById(R.id.btnSave);
         btnCancel = (Button) v.findViewById(R.id.btnCancel);
+        btnDelete = (Button) v.findViewById(R.id.btnDelete);
 
         btnSave.setOnClickListener(this);
         btnCancel.setOnClickListener(this);
+        btnDelete.setOnClickListener(this);
     }
 
     @Override
@@ -117,11 +126,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 String releaseDate = txtReleaseDate.getText().toString();
 
                 int id = Integer.parseInt(txtId.getText().toString());
-                if(id < 0){
+
+                if(arrayList == null || arrayList.size() == 0)
+                {
+                    id = 1;
+                }
+                else if(id < 0){
                     id += arrayList.get(arrayList.size()-1).getId();
                 }
 
                 LanguageInfo info = new LanguageInfo();
+
+                if(tmpPosition >= 0){
+                    info = arrayList.get(tmpPosition);
+                }
+
                 info.setId(id);
                 info.setName(name);
                 info.setDescription(desc);
@@ -133,16 +152,36 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     e.printStackTrace();
                 }
 
-                arrayList.add(info);
-
+                //Add to list if currenct position is less than 0
+                if(tmpPosition < 0){
+                    arrayList.add(info);
+                }
+                adapter.notifyDataSetChanged();
                 alertDialog.hide();
-
+                tmpPosition = -9;
                 ;break;
             case R.id.btnCancel:
-
+                tmpPosition = -9;
+                alertDialog.cancel();
                 ;break;
             case R.id.fab:
-                showPopupDialog();break;
+                tmpPosition = -9;
+                showPopupDialog(null);break;
+            case R.id.btnDelete:
+                int deletedId = Integer.parseInt(txtId.getText().toString());
+                if(deletedId < 0){
+                    alertDialog.hide();
+                    tmpPosition = -9;
+                    return;
+                }else{
+                    if(tmpPosition >= 0){
+                        arrayList.remove(arrayList.get(tmpPosition));
+                        adapter.notifyDataSetChanged();
+                    }
+                }
+                alertDialog.hide();
+                tmpPosition = -9;
+                break;
         }
     }
 
@@ -183,13 +222,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 id = Integer.parseInt(txtId.getText().toString());
 
                 if(id < 0) {
-                    LanguageInfo info = arrayList.get(arrayList.size()-1);
-                    id += info.getId();
+                    id += arrayList.get(arrayList.size()-1).getId();
                     isExist = false;
                 }
                 else{
                     isExist = true;
-                    arrayList.remove(tmpListID);
                 }
 
                 name = txtLangName.getText().toString();
@@ -197,6 +234,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 releasedate = txtReleaseDate.getText().toString();
 
                 LanguageInfo info = new LanguageInfo();
+                if(isExist){
+                    info = arrayList.get(tmpPosition);
+                }
+
                 info.setName(name);
                 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
                 try {
@@ -205,14 +246,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     e.printStackTrace();
                 }
                 info.setDescription(desc);
-                arrayList.add(info);
+
+                if(!isExist){
+                    arrayList.add(info);
+                }
+
                 adapter.notifyDataSetChanged();
                 alertDialog.hide();
+                tmpPosition = -9;
                 break;
             case R.id.btnCancel:
+                tmpPosition = -9;
                 tmpLanguageInfo = null;
                 alertDialog.cancel();break;
-            case R.id.fab:showPopupDialog();break;
+            case R.id.fab:showPopupDialog(null);break;
         }
     }
 
