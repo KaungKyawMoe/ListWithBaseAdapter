@@ -16,6 +16,7 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.example.listwithbaseadapter.Model.LanguageInfo;
+import com.example.listwithbaseadapter.Utility.DbHelper;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.text.ParseException;
@@ -50,6 +51,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         toDoList = (ListView)findViewById(R.id.toDoList);
         fab = (FloatingActionButton) findViewById(R.id.fab);
 
+        //Get Data From List
         //GenerateList();
 
         /*
@@ -57,6 +59,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ArrayAdapter adapter = new ArrayAdapter<String>(this,R.layout.list_item,nameList);
         toDoList.setAdapter(adapter);
         */
+
+        //Get All Data From Sqlite
+        try {
+            GetAllData();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
 
         adapter = new LanguageAdapter(this,arrayList);
         toDoList.setAdapter(adapter);
@@ -71,6 +80,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
 
         fab.setOnClickListener(this);
+    }
+
+    public  void GetAllData() throws ParseException {
+        DbHelper dbHelper = new DbHelper(MainActivity.this);
+        arrayList = dbHelper.GetAll();
     }
 
     private void GenerateList(){
@@ -118,6 +132,75 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View view) {
+        switch (view.getId()){
+            case R.id.btnSave:
+                //Code To Insert Here
+                String name = txtLangName.getText().toString();
+                String desc = txtDescription.getText().toString();
+                String releaseDate = txtReleaseDate.getText().toString();
+
+                int id = Integer.parseInt(txtId.getText().toString());
+
+                LanguageInfo info = new LanguageInfo();
+
+                if(tmpPosition >= 0){
+                    info = arrayList.get(tmpPosition);
+                }
+
+                info.setId(id);
+                info.setName(name);
+                info.setDescription(desc);
+
+                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+                try {
+                    info.setReleasedDate(df.parse(releaseDate));
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+
+                //Insert to Database
+                DbHelper db = new DbHelper(this);
+
+                if(tmpPosition < 0) //For New Data
+                {
+                    id = db.Insert(info);
+                    info.setId(id);
+                    arrayList.add(info);
+                }
+                else{ //For Update Data
+                    db.Update(info);
+                }
+
+                adapter.notifyDataSetChanged();
+                alertDialog.hide();
+                tmpPosition = -9;
+                ;break;
+            case R.id.btnCancel:
+                tmpPosition = -9;
+                alertDialog.cancel();
+                ;break;
+            case R.id.fab:
+                tmpPosition = -9;
+                showPopupDialog(null);break;
+            case R.id.btnDelete:
+                int deletedId = Integer.parseInt(txtId.getText().toString());
+                if(deletedId < 0){
+                    alertDialog.hide();
+                    tmpPosition = -9;
+                    return;
+                }else{
+                    if(tmpPosition >= 0){
+                        arrayList.remove(arrayList.get(tmpPosition));
+                        adapter.notifyDataSetChanged();
+                    }
+                }
+                alertDialog.hide();
+                tmpPosition = -9;
+                break;
+        }
+    }
+
+    public void onClickOld(View view) {
         switch (view.getId()){
             case R.id.btnSave:
                 //Code To Insert Here
@@ -182,84 +265,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 alertDialog.hide();
                 tmpPosition = -9;
                 break;
-        }
-    }
-
-    private void showPopupDialogOld(LanguageInfo info){
-        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(MainActivity.this);
-        dialogBuilder.setCancelable(false);
-        View v = getLayoutInflater().inflate(R.layout.language_view,null);
-        dialogBuilder.setView(v);
-
-        alertDialog = dialogBuilder.create();
-        alertDialog.show();
-
-        txtId = (EditText) v.findViewById(R.id.txtId);
-        txtLangName = (EditText) v.findViewById(R.id.txtLangName);
-        txtDescription = (EditText) v.findViewById(R.id.txtDescription);
-        txtReleaseDate = (EditText) v.findViewById(R.id.txtReleaseDate);
-
-        if(info != null){
-            txtId.setText(String.valueOf(info.getId()));
-            txtLangName.setText(info.getName());
-            txtDescription.setText(info.getDescription());
-            txtReleaseDate.setText(new SimpleDateFormat("yyyy-MM-dd").format(info.getReleasedDate()));
-        }
-
-        btnSave = (Button) v.findViewById(R.id.btnSave);
-        btnCancel = (Button) v.findViewById(R.id.btnCancel);
-
-        btnSave.setOnClickListener(this);
-        btnCancel.setOnClickListener(this);
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public void onClickOld(View view) {
-        switch (view.getId()){
-            case R.id.btnSave:
-
-                boolean isExist = false;
-                id = Integer.parseInt(txtId.getText().toString());
-
-                if(id < 0) {
-                    id += arrayList.get(arrayList.size()-1).getId();
-                    isExist = false;
-                }
-                else{
-                    isExist = true;
-                }
-
-                name = txtLangName.getText().toString();
-                desc = txtDescription.getText().toString();
-                releasedate = txtReleaseDate.getText().toString();
-
-                LanguageInfo info = new LanguageInfo();
-                if(isExist){
-                    info = arrayList.get(tmpPosition);
-                }
-
-                info.setName(name);
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-                try {
-                    info.setReleasedDate(df.parse(releasedate));
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-                info.setDescription(desc);
-
-                if(!isExist){
-                    arrayList.add(info);
-                }
-
-                adapter.notifyDataSetChanged();
-                alertDialog.hide();
-                tmpPosition = -9;
-                break;
-            case R.id.btnCancel:
-                tmpPosition = -9;
-                tmpLanguageInfo = null;
-                alertDialog.cancel();break;
-            case R.id.fab:showPopupDialog(null);break;
         }
     }
 
