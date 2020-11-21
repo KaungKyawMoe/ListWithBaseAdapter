@@ -4,8 +4,10 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -16,9 +18,25 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.example.listwithbaseadapter.Model.LanguageInfo;
+import com.example.listwithbaseadapter.Utility.ApiHelper;
 import com.example.listwithbaseadapter.Utility.DbHelper;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -29,11 +47,20 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.HttpUrl;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     ListView toDoList;
     FloatingActionButton fab;
-    ArrayList<LanguageInfo> arrayList = new ArrayList<>();
+    public ArrayList<LanguageInfo> arrayList;
     LanguageAdapter adapter;
 
     EditText txtLangName,txtDescription,txtReleaseDate,txtId;
@@ -61,11 +88,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         */
 
         //Get All Data From Sqlite
+        /*
         try {
             GetAllData();
         } catch (ParseException e) {
             e.printStackTrace();
         }
+        */
+        //Get Data From Api
+        new CRUDSync().execute("http://192.168.99.135:82/api/values?value=","");
 
         adapter = new LanguageAdapter(this,arrayList);
         toDoList.setAdapter(adapter);
@@ -82,6 +113,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         fab.setOnClickListener(this);
     }
 
+    //Get All Data From Sqlite
     public  void GetAllData() throws ParseException {
         DbHelper dbHelper = new DbHelper(MainActivity.this);
         arrayList = dbHelper.GetAll();
@@ -180,8 +212,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 alertDialog.cancel();
                 ;break;
             case R.id.fab:
-                tmpPosition = -9;
-                showPopupDialog(null);break;
+//                tmpPosition = -9;
+//                showPopupDialog(null);break;
+                  new CRUDSync().execute("http://192.168.99.135:82/api/values?value=","");break;
             case R.id.btnDelete:
                 int deletedId = Integer.parseInt(txtId.getText().toString());
                 if(deletedId < 0){
@@ -268,5 +301,52 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    private class CRUDSync extends AsyncTask<String,Void,ArrayList<LanguageInfo>> {
 
+        @Override
+        protected ArrayList<LanguageInfo> doInBackground(String... strings) {
+            String strUrl = strings[0];
+            String paramValue = strings[1];
+            String result = "";
+            result = ApiHelper.Insert(strUrl,paramValue);
+
+            try {
+                if(result != null && result != ""){
+                    JSONArray jsonArray = null;
+                    try {
+                        String jsonFormattedString = result.replaceAll("\\\\", "");
+                        jsonArray = new JSONArray(jsonFormattedString);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    for(int i=0;i<jsonArray.length();i++){
+                        JSONObject jsonObject = jsonArray.getJSONObject(i);
+                        LanguageInfo _info = new LanguageInfo();
+                        _info.setId(jsonObject.getInt("id"));
+                        _info.setName(jsonObject.getString("name"));
+                        _info.setDescription(jsonObject.getString("description"));
+                        _info.setReleasedDate(new SimpleDateFormat("dd-MM-yyyy").parse(jsonObject.getString("releasedDate")));
+                        arrayList.add(_info);
+                    }
+                }
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            return arrayList;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            arrayList = new ArrayList<>();
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<LanguageInfo> list) {
+            super.onPostExecute(list);
+        }
+    }
 }
